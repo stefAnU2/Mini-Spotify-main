@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Playlist</title>
+    <style>
+      /* Flecha volver */
+      .volver {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-size: 24px;
+        color: white;
+        cursor: pointer;
+        user-select: none;
+      }
+      .volver:hover {
+        color: #1db954;
+      }
+
+      /* Contenedor título y opciones */
+      .header-playlist {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        margin-top: 50px;
+        margin-bottom: 10px;
+      }
+
+      /* Título centrado */
+      #tituloPlaylist {
+        font-size: 28px;
+        color: white;
+        text-align: center;
+      }
+
+      /* Botón + Agregar canción */
+      #btnAgregarCancion {
+        display: block;
+        margin: 10px auto;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #1db954;
+        color: black;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      #btnAgregarCancion:hover {
+        transform: scale(1.05);
+      }
+
+      /* Mini menú para agregar canciones */
+      #miniCanciones {
+        display: none;
+        position: absolute;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        max-height: 420px;
+        overflow-y: auto;
+        background-color: #0f0f0f;
+        border-radius: 8px;
+        padding: 10px;
+        z-index: 100;
+        flex-direction: column;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      /* Lista de canciones en mini menú */
+      #listaMiniCanciones .cancion {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        cursor: pointer;
+        gap: 10px;
+      }
+      #listaMiniCanciones .cancion img {
+        width: 50px;
+        height: 50px;
+      }
+
+      /* Opciones playlist (3 puntos) */
+      .menu-opciones {
+        position: absolute;
+        top: 0;
+        right: 10px;
+        font-size: 24px;
+        color: white;
+        cursor: pointer;
+      }
+      .menu-opciones:hover {
+        color: #1db954;
+      }
+      .miniMenuOpciones {
+        display: none;
+        position: absolute;
+        top: 30px;
+        right: 0;
+        background-color: #2a2a2a;
+        border-radius: 8px;
+        padding: 5px;
+        flex-direction: column;
+        z-index: 100;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+      .miniMenuOpciones button {
+        background: none;
+        border: none;
+        color: white;
+        padding: 6px 10px;
+        cursor: pointer;
+        text-align: left;
+      }
+      .miniMenuOpciones button:hover {
+        background-color: #1db954;
+        color: black;
+      }
+
+      /* Notificación */
+      #notificacion {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1db954;
+        color: black;
+        padding: 10px 20px;
+        border-radius: 8px;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+      }
+
+      /* Lista de canciones de la playlist */
+      #listaCanciones .cancion {
+        display: flex;
+        align-items: center;
+        margin: 10px;
+        cursor: pointer;
+        gap: 10px;
+        position: relative;
+      }
+      #listaCanciones .cancion img {
+        width: 80px;
+        height: 80px;
+      }
+
+      /* Input mini menú */
+      #buscarCancionMini {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+        border: none;
+        font-size: 14px;
+        background: #1a1a1a;
+        color: #fff;
+      }
+
+      div {
+        color: white;
+      }
+    </style>
+  </head>
+  <body class="main">
+    <div class="volver" id="btn-volver">←</div>
+
+    <div class="header-playlist">
+      <h1 id="tituloPlaylist"></h1>
+      <div class="menu-opciones">
+        ⋮
+        <div class="miniMenuOpciones">
+          <button id="renombrar">Renombrar Playlist</button>
+          <button id="vaciar">Vaciar Playlist</button>
+          <button id="borrar">Borrar Playlist</button>
+        </div>
+      </div>
+    </div>
+
+    <button id="btnAgregarCancion">+ Agregar canción</button>
+
+    <div id="miniCanciones">
+      <input
+        type="text"
+        id="buscarCancionMini"
+        placeholder="Buscar canción..."
+      />
+      <div id="listaMiniCanciones"></div>
+    </div>
+
+    <div id="listaCanciones"></div>
+
+    <div id="notificacion"></div>
+
+    <!-- Catálogo local para agregar canciones (tu fuente local) -->
+    <script src="canciones.js"></script>
+
+    <!-- API -->
+    <script src="api.js"></script>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const pid = params.get("id"); // id playlist por URL
+      const tituloEl = document.getElementById("tituloPlaylist");
+      const listaEl = document.getElementById("listaCanciones");
+      const noti = document.getElementById("notificacion");
+
+      let estado = {
+        playlist: null, // {id,nombre,created_at}
+        canciones: [], // [{id,titulo,artista,ruta,duration,orden}]
+      };
+
+      // ======= Helpers UI =======
+      function toast(texto) {
+        noti.textContent = texto;
+        noti.style.opacity = "1";
+        setTimeout(() => (noti.style.opacity = "0"), 1800);
+      }
+
+      // Reproducir canción en el reproductor (frame inferior)
+      function reproducir(index) {
+        if (!estado.canciones?.length) return;
+        const payload = {
+          playlist: estado.canciones.map((c) => ({
+            titulo: c.titulo,
+            artista: c.artista,
+            ruta: c.ruta,
+            thumbnail: c.thumbnail || "",
+          })),
+          index,
+        };
+        if (parent?.frames?.reproductorFrame) {
+          parent.frames["reproductorFrame"].postMessage(payload, "*");
+        }
+      }
+
+      // Render canciones
+      function renderCanciones() {
+        listaEl.innerHTML = "";
+        if (!estado.canciones.length) {
+          listaEl.innerHTML = "<p>No hay canciones en esta playlist.</p>";
+          return;
+        }
+        estado.canciones.forEach((c, i) => {
+          const row = document.createElement("div");
+          row.className = "cancion";
+
+          const img = document.createElement("img");
+          img.alt = c.titulo || "canción";
+          img.src = c.thumbnail;
+
+          const title = document.createElement("p");
+          title.textContent = c.titulo || "(sin título)";
+          title.style.margin = "0";
+          title.style.fontSize = "16px";
+
+          // Botón eliminar
+          const btnDel = document.createElement("button");
+          btnDel.textContent = "−";
+          Object.assign(btnDel.style, {
+            position: "absolute",
+            top: "0",
+            left: "0",
+            width: "25px",
+            height: "25px",
+            borderRadius: "50%",
+            border: "none",
+            background: "white",
+            color: "black",
+            fontWeight: "bold",
+            cursor: "pointer",
+          });
+          btnDel.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            try {
+              await api.delSong(pid, c.id);
+              await cargar();
+              toast(`Se eliminó "${c.titulo || ""}"`);
+              if (parent?.frames?.bibliotecaFrame) {
+                parent.frames["bibliotecaFrame"].location.href =
+                  "biblioteca.html?refresh=" + Date.now();
+              }
+            } catch (err) {
+              alert(err?.error || "Error al eliminar");
+            }
+          });
+
+          const contImg = document.createElement("div");
+          contImg.appendChild(img);
+          contImg.appendChild(btnDel);
+
+          row.appendChild(contImg);
+          row.appendChild(title);
+          row.addEventListener("click", () => reproducir(i));
+          listaEl.appendChild(row);
+        });
+      }
+
+      // ======= Carga inicial =======
+      (async function init() {
+        const ok = await requireAuth();
+        if (!ok) return;
+        if (!pid) {
+          location.href = "contenido.html";
+          return;
+        }
+        await cargar();
+      })();
+
+      async function cargar() {
+        try {
+          const r = await api.getPl(pid); // { playlist, canciones }
+          estado.playlist = r.playlist;
+          estado.canciones = r.canciones || [];
+          tituloEl.textContent = estado.playlist?.nombre || "Playlist";
+
+          // 🔧 Reparar canciones sin thumbnail usando el catálogo local
+          estado.canciones = estado.canciones.map((c) => {
+            if (!c.thumbnail) {
+              const match = cancionesCatalogo.find(
+                (x) => x.ruta === c.ruta || x.titulo === c.titulo
+              );
+              if (match) c.thumbnail = match.thumbnail;
+            }
+            return c;
+          });
+
+          renderCanciones();
+        } catch (e) {
+          alert(e?.error || "Error al cargar la playlist");
+          location.href = "contenido.html";
+        }
+      }
+
+      // ======= Volver =======
+      document.getElementById("btn-volver").addEventListener("click", () => {
+        if (parent?.frames?.contenidoFrame) {
+          parent.frames["contenidoFrame"].location.href = "contenido.html";
+        } else {
+          location.href = "contenido.html";
+        }
+      });
+
+      // ======= Menú opciones =======
+      const menuOpciones = document.querySelector(".menu-opciones");
+      const miniMenuOpciones = document.querySelector(".miniMenuOpciones");
+      menuOpciones.addEventListener("click", () => {
+        miniMenuOpciones.style.display =
+          miniMenuOpciones.style.display === "flex" ? "none" : "flex";
+        miniMenuOpciones.style.flexDirection = "column";
+      });
+
+      // === REEMPLAZADO: Renombrar (usa api.renamePl) ===
+      document
+        .getElementById("renombrar")
+        .addEventListener("click", async () => {
+          const actual = (estado.playlist?.nombre || "").trim();
+          const nuevoNombre = prompt("Nuevo nombre para la playlist:", actual);
+          if (!nuevoNombre) return;
+          const nombre = nuevoNombre.trim();
+          if (!nombre || nombre === actual) return;
+
+          try {
+            await api.renamePl(pid, nombre);
+            await cargar(); // recarga el nombre en la vista
+            if (parent?.frames?.bibliotecaFrame) {
+              parent.frames["bibliotecaFrame"].location.href =
+                "biblioteca.html?refresh=" + Date.now();
+            }
+            toast("Playlist renombrada");
+          } catch (e) {
+            alert(e?.error || "Error al renombrar");
+          }
+        });
+
+      // === REEMPLAZADO: Vaciar (usa api.clearPl) ===
+      document.getElementById("vaciar").addEventListener("click", async () => {
+        if (!estado.canciones.length) return;
+        if (!confirm("¿Vaciar la playlist?")) return;
+        try {
+          await api.clearPl(pid); // DELETE /api/playlists/:id/songs
+          await cargar();
+          toast("Playlist vaciada");
+          if (parent?.frames?.bibliotecaFrame) {
+            parent.frames["bibliotecaFrame"].location.href =
+              "biblioteca.html?refresh=" + Date.now();
+          }
+        } catch (e) {
+          alert(e?.error || "Error al vaciar");
+        }
+      });
+
+      // Borrar playlist completa (ya estaba OK)
+      document.getElementById("borrar").addEventListener("click", async () => {
+        if (!confirm("¿Estás seguro de borrar esta playlist?")) return;
+        try {
+          await api.delPl(pid);
+          if (parent?.frames?.bibliotecaFrame) {
+            parent.frames["bibliotecaFrame"].location.href =
+              "biblioteca.html?refresh=" + Date.now();
+          }
+          if (parent?.frames?.contenidoFrame) {
+            parent.frames["contenidoFrame"].location.href = "contenido.html";
+          } else {
+            location.href = "contenido.html";
+          }
+        } catch (e) {
+          alert(e?.error || "Error al borrar playlist");
+        }
+      });
+
+      // ======= Mini menú agregar canción (usa canciones.js local) =======
+      const btnAgregar = document.getElementById("btnAgregarCancion");
+      const miniCanciones = document.getElementById("miniCanciones");
+      const listaMini = document.getElementById("listaMiniCanciones");
+      const inputBuscarMini = document.getElementById("buscarCancionMini");
+
+      btnAgregar.addEventListener("click", () => {
+        miniCanciones.style.display =
+          miniCanciones.style.display === "block" ? "none" : "block";
+        mostrarMiniCanciones();
+      });
+
+      inputBuscarMini.addEventListener("input", () => {
+        mostrarMiniCanciones(inputBuscarMini.value);
+      });
+
+      function mostrarMiniCanciones(query = "") {
+        listaMini.innerHTML = "";
+        cancionesCatalogo
+          .filter((c) =>
+            (c.titulo || "").toLowerCase().includes((query || "").toLowerCase())
+          )
+          .forEach((c) => {
+            const div = document.createElement("div");
+            div.classList.add("cancion");
+            div.innerHTML = `<img src="${c.thumbnail}" alt="${c.titulo}"><p>${c.titulo}</p>`;
+            div.addEventListener("click", async () => {
+              try {
+                // Evitar duplicados por título+ruta
+                const ya = estado.canciones.some(
+                  (x) =>
+                    (x.ruta || "") === (c.ruta || "") &&
+                    (x.titulo || "") === (c.titulo || "")
+                );
+                if (ya) return toast("Ya estaba en la playlist");
+
+                await api.addSong(pid, {
+                  titulo: c.titulo,
+                  artista: c.artista || "",
+                  ruta: c.ruta || "",
+                  thumbnail: c.thumbnail || "",
+                  duration: c.duration || null,
+                });
+                await cargar();
+                toast(`Se agregó "${c.titulo}"`);
+                if (parent?.frames?.bibliotecaFrame) {
+                  parent.frames["bibliotecaFrame"].location.href =
+                    "biblioteca.html?refresh=" + Date.now();
+                }
+              } catch (e) {
+                alert(e?.error || "Error al agregar canción");
+              }
+            });
+            listaMini.appendChild(div);
+          });
+      }
+    </script>
+  </body>
+</html>

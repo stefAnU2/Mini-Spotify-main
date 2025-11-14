@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Barra de Búsqueda</title>
+    <style>
+      .barra-container {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 5px 15px;
+      }
+      .barra-container button.logo {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+      }
+      .barra-container button.logo img {
+        height: 36px;
+        width: 36px;
+        display: block;
+      }
+      #buscar {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 20px;
+        border: 1px solid #333;
+        background: #111;
+        font-size: 16px;
+        color: #e6f4ff;
+        outline: none;
+      }
+      .user-box {
+        display: flex-start;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        color: #9aa0a6;
+      }
+      .logout-btn {
+        padding: 6px 10px;
+        border-radius: 10px;
+        border: 1px solid #333;
+        background: #111;
+        color: #fff;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body class="barra">
+    <div class="barra-container">
+      <button id="btnLogo" class="logo" title="Inicio">
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/2048px-Spotify_logo_without_text.svg.png"
+          alt="Logo"
+        />
+      </button>
+
+      <input
+        type="text"
+        id="buscar"
+        placeholder="¿Qué quieres reproducir?"
+        autocomplete="off"
+      />
+
+      <!-- Usuario + salir -->
+      <div class="user-box">
+        <span id="usuarioActual"></span>
+        <button class="logout-btn" id="btnSalir" title="Cerrar sesión">
+          Salir
+        </button>
+      </div>
+    </div>
+
+    <!-- lógica de barra (búsqueda / navegación) -->
+    <script>
+      const buscar = document.getElementById("buscar");
+      const btnLogo = document.getElementById("btnLogo");
+
+      // Enter → búsqueda en el frame de contenido
+      buscar.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          const query = buscar.value.trim();
+          if (query && parent?.frames?.contenidoFrame) {
+            parent.frames["contenidoFrame"].location.href =
+              "resultados.html?query=" + encodeURIComponent(query);
+          }
+        }
+      });
+
+      // Logo → volver a contenido.html
+      btnLogo.addEventListener("click", () => {
+        if (parent?.frames?.contenidoFrame) {
+          parent.frames["contenidoFrame"].location.href = "contenido.html";
+        }
+      });
+    </script>
+
+    <!-- api y sesión -->
+    <script src="api.js"></script>
+    <script>
+      (async () => {
+        try {
+          // valida sesión y muestra @usuario
+          const { user } = await api.me();
+          const u = document.getElementById("usuarioActual");
+          if (u) u.textContent = user?.username ? `@${user.username}` : "";
+        } catch {
+          // Si no hay sesión válida, redirige al login en la ventana principal
+          top.location.href = "login.html";
+          return;
+        }
+      })();
+
+      // botón salir
+      document.getElementById("btnSalir").addEventListener("click", (e) => {
+        e.preventDefault();
+        logout(); // definido en api.js (limpia token y va a login)
+      });
+    </script>
+  </body>
+</html>

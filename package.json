@@ -1,0 +1,21 @@
+{
+  "name": "trabajo_integrador",
+  "version": "1.0.0",
+  "main": "canciones.js",
+  "scripts": {
+  "start": "node server.js"
+}
+,
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.4.1",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

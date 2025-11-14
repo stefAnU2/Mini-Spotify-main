@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mini Spotify</title>
+  <script src="api.js"></script>
+  <script>
+  async function boot() {
+    const t = getToken();
+    if (!t) { top.location.replace('login.html'); return; }
+    try {
+      await api.me(); // sesión válida
+    } catch {
+      // apiFetch limpia el token y como NO estamos en login, nos manda a login
+    }
+  }
+  
+  </script>
+</head>
+<script>
+  // este listener recibe el mensaje de reproductor.html y ajusta rows del frameset
+  window.addEventListener('message', (e) => {
+    if (!e.data || !e.data.setPlayerHeight) return;
+    const h = Number(e.data.setPlayerHeight) || 120;
+    try {
+      const fs = document.getElementsByTagName('frameset')[0];
+      if (!fs) return;
+      // ajusta la última fila a px (10%,*,<px>)
+      // conservá las dos primeras como estaban (siempre: 10% y *), pero reemplaza la última
+      // si querés otra lógica, la adaptamos
+      fs.rows = `10%,*,${Math.max(100, h)}px`;
+    } catch (err) {
+      console.warn('No se pudo ajustar frameset rows', err);
+    }
+  }, false);
+</script>
+
+
+<!-- OJO: en documentos con frames, no se usa <body>; va <frameset> -->
+<frameset rows="10%,*,80px" border="0" onload="boot()">
+  <!-- Barra superior -->
+  <frame src="barra.html" name="barraFrame" scrolling="no" noresize>
+
+  <!-- Centro: Biblioteca + Contenido -->
+  <frameset cols="20%,*" border="0">
+    <frame src="biblioteca.html" name="bibliotecaFrame" scrolling="auto">
+    <frame src="contenido.html"  name="contenidoFrame"  scrolling="auto">
+  </frameset>
+
+  <!-- Reproductor -->
+  <frame src="reproductor.html" name="reproductorFrame" scrolling="no" noresize>
+  <noframes>
+    <p>Tu navegador no soporta frames. <a href="login.html">Ingresá aquí</a>.</p>
+  </noframes>
+</frameset>
+</html>

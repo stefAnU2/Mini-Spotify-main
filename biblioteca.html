@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Biblioteca</title>
+    <style>
+      body {
+        background: rgb(15, 15, 15);
+        color: #fff;
+        font-family: sans-serif;
+        margin: 0;
+        padding: 15px;
+      }
+      h2 {
+        margin-bottom: 10px;
+      }
+      .btn-playlist {
+        display: block;
+        width: 100%;
+        margin: 10px 0;
+        padding: 10px;
+        background-color: #1db954;
+        color: black;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        transition: transform 0.2s ease;
+      }
+      .btn-playlist:hover {
+        transform: scale(1.05);
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      li {
+        padding: 8px;
+        border-bottom: 1px solid #222;
+        cursor: pointer;
+      }
+      li:hover {
+        background: #111;
+      }
+      #formNueva {
+        margin-top: 15px;
+        display: none;
+      }
+      #formNueva input {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 6px;
+        border-radius: 6px;
+        border: none;
+        background: #222;
+        color: #fff;
+      }
+      #formNueva button {
+        background-color: #1db954;
+        border: none;
+        padding: 8px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body class="biblioteca">
+    <h2>Mi Biblioteca</h2>
+
+    <button class="btn-playlist" id="nuevaPlaylistBtn">+ Nueva Playlist</button>
+
+    <div id="formNueva">
+      <input
+        type="text"
+        id="nombrePlaylist"
+        placeholder="Nombre de la playlist..."
+      />
+      <button id="crearPlaylistBtn">Crear</button>
+    </div>
+
+    <ul id="listaPlaylists"></ul>
+
+    <!-- API -->
+    <script src="api.js"></script>
+
+    <script>
+      const lista = document.getElementById("listaPlaylists");
+      const formNueva = document.getElementById("formNueva");
+      const btnNueva = document.getElementById("nuevaPlaylistBtn");
+      const inputNombre = document.getElementById("nombrePlaylist");
+      const btnCrear = document.getElementById("crearPlaylistBtn");
+
+      (async function init() {
+        const ok = await requireAuth();
+        if (!ok) return;
+        await cargarPlaylists();
+      })();
+
+      async function cargarPlaylists() {
+        try {
+          const r = await api.playlists();
+          lista.innerHTML = "";
+          if (!r.playlists || r.playlists.length === 0) {
+            lista.innerHTML = `<li style="color:#888;">No tenés playlists todavía</li>`;
+            return;
+          }
+          r.playlists.forEach((pl) => {
+            const li = document.createElement("li");
+            li.textContent = pl.nombre;
+            li.addEventListener("click", () => {
+              window.parent.frames[
+                "contenidoFrame"
+              ].location.href = `playlist.html?id=${pl.id}`;
+            });
+            lista.appendChild(li);
+          });
+        } catch (e) {
+          console.error(e);
+          lista.innerHTML = `<li style="color:red;">Error al cargar playlists</li>`;
+        }
+      }
+
+      // Mostrar/ocultar formulario
+      btnNueva.addEventListener("click", () => {
+        formNueva.style.display =
+          formNueva.style.display === "none" ? "block" : "none";
+        inputNombre.focus();
+      });
+
+      // Crear playlist
+      btnCrear.addEventListener("click", async () => {
+        const nombre = inputNombre.value.trim();
+        if (!nombre) return alert("Poné un nombre");
+        try {
+          await api.createPl(nombre);
+          inputNombre.value = "";
+          formNueva.style.display = "none";
+          await cargarPlaylists();
+        } catch (e) {
+          alert(e.error || "Error al crear playlist");
+        }
+      });
+    </script>
+  </body>
+</html>

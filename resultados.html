@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Resultados</title>
+    <style>
+      .volver {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-size: 24px;
+        color: white;
+        cursor: pointer;
+      }
+      .volver:hover {
+        color: #1db954;
+      }
+
+      body.main {
+        position: relative;
+        padding-top: 50px;
+      }
+
+      /* Botón + para agregar a playlist */
+      .btn-agregar {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background-color: #1db954;
+        color: black;
+        font-weight: bold;
+        border: none;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .miniPlaylists {
+        position: absolute;
+        background-color: #2a2a2a;
+        border-radius: 8px;
+        padding: 5px;
+        display: none;
+        flex-direction: column;
+        z-index: 100;
+      }
+
+      .miniPlaylists button {
+        background: none;
+        border: none;
+        color: white;
+        padding: 5px 10px;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .miniPlaylists button:hover {
+        background-color: #1db954;
+        color: black;
+      }
+
+      .cancion-wrapper {
+        position: relative;
+        display: inline-block;
+        margin: 10px;
+      }
+    </style>
+  </head>
+  <body class="main">
+    <div class="volver" id="btn-volver">←</div>
+    <h1>Mejores coincidencias</h1>
+    <div id="resultados"></div>
+
+    <script src="canciones.js"></script>
+    <script>
+      document.getElementById("btn-volver").addEventListener("click", () => {
+        window.location.href = "contenido.html";
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      const query = params.get("query");
+      const resultados = document.getElementById("resultados");
+
+      if (query) {
+        const coincidencias = buscarCanciones(query);
+
+        if (coincidencias.length > 0) {
+          coincidencias.forEach((c) => {
+            const wrapper = document.createElement("div");
+            wrapper.classList.add("cancion-wrapper");
+
+            const div = document.createElement("div");
+            div.classList.add("cancion");
+            div.innerHTML = `
+            <img src="${c.thumbnail}" alt="Portada de ${c.titulo}">
+            <p>${c.titulo}</p>
+          `;
+
+            // Botón + para agregar a playlist
+            const btnAgregar = document.createElement("button");
+            btnAgregar.textContent = "+";
+            btnAgregar.classList.add("btn-agregar");
+
+            const mini = document.createElement("div");
+            mini.classList.add("miniPlaylists");
+
+            const playlists =
+              JSON.parse(localStorage.getItem("playlists")) || [];
+            playlists.forEach((pl) => {
+              const btnPl = document.createElement("button");
+              btnPl.textContent = pl.nombre;
+              btnPl.addEventListener("click", () => {
+                const index = playlists.findIndex(
+                  (x) => x.nombre === pl.nombre
+                );
+                if (
+                  !playlists[index].canciones.some((x) => x.ruta === c.ruta)
+                ) {
+                  playlists[index].canciones.push(c);
+                  localStorage.setItem("playlists", JSON.stringify(playlists));
+                  alert(`Se agregó "${c.titulo}" a "${pl.nombre}"`);
+                }
+                mini.style.display = "none";
+              });
+              mini.appendChild(btnPl);
+            });
+
+            btnAgregar.addEventListener("click", (e) => {
+              mini.style.display =
+                mini.style.display === "flex" ? "none" : "flex";
+              mini.style.top = e.target.offsetTop + 30 + "px";
+              mini.style.left = e.target.offsetLeft + "px";
+            });
+
+            wrapper.appendChild(div);
+            wrapper.appendChild(btnAgregar);
+            wrapper.appendChild(mini);
+
+            // Click en la canción → reproducir
+            div.addEventListener("click", () => {
+              window.parent.frames["reproductorFrame"].postMessage(
+                { song: c.ruta },
+                "*"
+              );
+            });
+
+            resultados.appendChild(wrapper);
+          });
+        } else {
+          resultados.innerHTML = "<p>No se encontraron coincidencias.</p>";
+        }
+      }
+    </script>
+  </body>
+</html>

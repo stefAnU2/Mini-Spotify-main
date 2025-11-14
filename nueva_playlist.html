@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Nueva Playlist</title>
+    <style>
+      body.main {
+        background: #000;
+        color: #fff;
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          sans-serif;
+      }
+      .volver {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-size: 24px;
+        color: white;
+        cursor: pointer;
+        user-select: none;
+      }
+      .volver:hover {
+        color: #1db954;
+      }
+
+      .form-container {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        padding: 24px;
+      }
+      h1 {
+        margin: 0 0 12px;
+      }
+      input[type="text"] {
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: 1px solid #333;
+        margin-top: 10px;
+        width: 280px;
+        background-color: #111;
+        color: white;
+        outline: none;
+      }
+      input[type="text"]::placeholder {
+        color: #bbb;
+      }
+      button {
+        margin-top: 15px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #1db954;
+        color: black;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      button:hover {
+        transform: scale(1.05);
+      }
+      .msg {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #9aa0a6;
+      }
+      .err {
+        color: #ffb3b3;
+      }
+    </style>
+  </head>
+  <body class="main">
+    <div class="volver" id="btn-volver" title="Volver">←</div>
+
+    <div class="form-container">
+      <h1>Crear nueva playlist</h1>
+      <input
+        type="text"
+        id="nombrePlaylist"
+        placeholder="Escribe un nombre..."
+      />
+      <button id="crearBtn">Crear</button>
+      <div id="msg" class="msg"></div>
+    </div>
+
+    <!-- API -->
+    <script src="api.js"></script>
+
+    <script>
+      const input = document.getElementById("nombrePlaylist");
+      const btn = document.getElementById("crearBtn");
+      const msg = document.getElementById("msg");
+
+      // Validar sesión (si se abre directo en el frame)
+      (async () => {
+        const ok = await requireAuth();
+        if (!ok) return;
+      })();
+
+      // Botón volver → al panel derecho por defecto
+      document.getElementById("btn-volver").addEventListener("click", () => {
+        if (parent?.frames?.contenidoFrame) {
+          parent.frames["contenidoFrame"].location.href = "contenido.html";
+        } else {
+          // fallback si no está en frames
+          location.href = "contenido.html";
+        }
+      });
+
+      function setBusy(b) {
+        btn.disabled = b;
+        btn.textContent = b ? "Creando…" : "Crear";
+      }
+
+      async function crear() {
+        const nombre = (input.value || "").trim();
+        msg.textContent = "";
+        msg.classList.remove("err");
+
+        if (!nombre) {
+          msg.textContent = "Por favor escribí un nombre";
+          msg.classList.add("err");
+          return;
+        }
+
+        try {
+          setBusy(true);
+          await api.createPl(nombre);
+
+          // Refrescar panel izquierdo (biblioteca) y volver al contenido
+          if (parent?.frames?.bibliotecaFrame) {
+            parent.frames["bibliotecaFrame"].location.href =
+              "biblioteca.html?refresh=" + Date.now();
+          }
+          if (parent?.frames?.contenidoFrame) {
+            parent.frames["contenidoFrame"].location.href = "contenido.html";
+          } else {
+            location.href = "contenido.html";
+          }
+        } catch (e) {
+          msg.textContent = e?.error || "Error al crear playlist";
+          msg.classList.add("err");
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      btn.addEventListener("click", crear);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") crear();
+      });
+    </script>
+  </body>
+</html>
